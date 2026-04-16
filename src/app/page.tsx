@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MapPin, Building2, ZipCode, Loader2, Sparkles, PlusCircle, CheckCircle2 } from "lucide-react";
+import { Search, MapPin, Building2, Loader2, Sparkles, PlusCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";

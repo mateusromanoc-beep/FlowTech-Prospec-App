@@ -9,25 +9,26 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.36.1",
+    "framer-motion": "^11.11.11",
+    "lucide-react": "^0.456.0",
     "next": "15.0.3",
+    "next-auth": "5.0.0-beta.25",
     "react": "19.0.0-rc-66855b96-20241106",
     "react-dom": "19.0.0-rc-66855b96-20241106",
-    "lucide-react": "^0.456.0",
-    "framer-motion": "^11.11.11",
-    "@libsql/client": "^0.14.0",
-    "drizzle-orm": "^0.36.1",
-    "next-auth": "5.0.0-beta.25",
-    "zod": "^3.23.8",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.5.4"
+    "tailwind-merge": "^2.5.4",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "typescript": "^5",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.28.1",
     "eslint": "^8",
     "eslint-config-next": "15.0.3",
-    "drizzle-kit": "^0.28.1"
+    "typescript": "^5"
   }
 }
