@@ -35,7 +35,8 @@ export async function createSession(userId: number, role: "ADMIN" | "USER", name
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 dias
   const session = await encrypt({ userId, role, name, expiresAt });
 
-  cookies().set("session", session, {
+  const cookieStore = await cookies();
+  cookieStore.set("session", session, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     expires: expiresAt,
@@ -45,11 +46,13 @@ export async function createSession(userId: number, role: "ADMIN" | "USER", name
 }
 
 export async function clearSession() {
-  cookies().delete("session");
+  const cookieStore = await cookies();
+  cookieStore.delete("session");
 }
 
 export async function verifySession() {
-  const cookie = cookies().get("session")?.value;
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get("session")?.value;
   const session = await decrypt(cookie);
 
   if (!session?.userId) {
@@ -58,3 +61,4 @@ export async function verifySession() {
 
   return { isAuth: true, userId: session.userId, role: session.role, name: session.name };
 }
+
