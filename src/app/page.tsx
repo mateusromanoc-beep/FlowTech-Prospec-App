@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MapPin, Building2, Loader2, Sparkles, PlusCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Search, MapPin, Building2, Loader2, Sparkles, CheckCircle2, ArrowLeft, Cpu } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(false);
@@ -51,38 +50,40 @@ export default function Dashboard() {
       setLoading(false);
       alert(resData.message || "Prospecção concluída com sucesso!");
       
-      // Recarregar os dados do dashboard após o sucesso
       fetchData();
     } catch (error: any) {
       console.error(error);
       setLoading(false);
-      alert(`Erro: ${error.message || "Erro ao conectar com o servidor"}. Por favor, verifique se as credenciais do Google Maps e Gemini estão ativas no n8n.`);
+      alert(`Erro: ${error.message || "Erro ao conectar com o servidor"}`);
     }
   };
 
   return (
     <main className="container animate-fade-in p-8">
-      {/* Welcome Section */}
-      <section className="mb-12">
-        <div className="flex items-center gap-4 mb-2">
-          <div className="p-3 bg-primary/10 rounded-2xl">
-            <Image src="/logo.png" alt="Logo" width={48} height={48} className="rounded-xl" />
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight">FlowTech Dashboard</h1>
+      {/* Welcome Section / ANOVA Style Hero */}
+      <section className="mb-16 mt-8 flex flex-col items-center text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-semibold mb-6">
+          <Sparkles size={16} /> A.I Driven SaaS Platform
         </div>
-        <p className="text-muted text-lg">Bem-vindo ao centro de comando da sua automação de prospecção.</p>
+        <h1 className="title max-w-4xl mx-auto leading-tight">
+          Transform Your Lead Gen with <br className="hidden md:block"/>
+          <span className="neon-text">AI-Powered Solutions</span>
+        </h1>
+        <p className="subtitle max-w-2xl mx-auto mt-4 text-lg">
+          Our AI platform automates repetitive prospecting tasks, connecting you directly with high-quality regional leads in seconds.
+        </p>
       </section>
 
       {/* Hero Search Section */}
-      <section className="glass p-8 mb-12 relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-4 opacity-10">
-          <Sparkles size={120} />
+      <section className="glass p-10 mb-16 relative overflow-hidden bg-[rgba(10,11,16,0.8)] border-primary/20">
+        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+          <Cpu size={250} />
         </div>
         
-        <form onSubmit={handleSubmit} className="relative z-10">
-          <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <Search size={20} className="text-primary" />
-            Configurar Nova Busca
+        <form onSubmit={handleSubmit} className="relative z-10 max-w-4xl mx-auto">
+          <h3 className="text-2xl font-bold mb-8 flex items-center gap-3">
+            <Search size={24} className="text-primary" />
+            Launch AI Search Agent
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

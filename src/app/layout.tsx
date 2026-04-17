@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Inter } from "next/font/google";
 import { verifySession } from "@/lib/session";
 import { logoutAction } from "./actions";
-import { LogOut, UserCircle } from "lucide-react";
+import { LogOut, UserCircle, Cpu } from "lucide-react";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FlowTech - Automação de Prospecção",
-  description: "Gerencie e automatize sua prospecção de leads.",
+  title: "Flow Prospect - Automação de Prospecção",
+  description: "Gerencie e automatize sua prospecção de leads com IA.",
 };
 
 export default async function RootLayout({
@@ -25,12 +24,20 @@ export default async function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={`${inter.className} dark bg-background text-foreground antialiased`}>
-        <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/10 px-8 py-4">
+        {/* Background Overlay */}
+        <div className="fixed inset-0 pointer-events-none z-[-1] bg-[radial-gradient(circle_at_50%_0%,rgba(49,88,255,0.05),transparent_70%)]" />
+
+        <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5 px-8 pt-5 pb-5 rounded-b-3xl">
           <div className="container flex justify-between items-center mx-auto">
-            <div className="flex items-center gap-3">
-              <Image src="/logo.png" alt="FlowTech Logo" width={40} height={40} className="rounded-lg" />
-              <span className="text-xl font-bold tracking-tight">FlowTech</span>
-            </div>
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/20 group-hover:border-primary/50 transition-colors">
+                <Cpu size={24} className="text-secondary" />
+              </div>
+              <span className="text-2xl font-black tracking-tighter uppercase flex gap-1">
+                <span className="text-blue-500">Flow</span>
+                <span className="text-purple-500">Prospect</span>
+              </span>
+            </Link>
             {session ? (
               <div className="flex items-center gap-8 text-sm font-medium">
                 <nav className="flex gap-6">
