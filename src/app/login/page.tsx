@@ -1,19 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
+import { LogIn, Mail, Lock, Loader2, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import { loginAction } from "./actions"; // Importa a server action
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    // Simulação de login
-    setTimeout(() => {
-      window.location.href = "/";
-    }, 1500);
+    setError("");
+    
+    const formData = new FormData(e.currentTarget);
+    const result = await loginAction(formData).catch(() => ({ error: "Erro de conexão, tente novamente." }));
+    
+    if (result?.error) {
+      setError(result.error);
+      setLoading(false);
+    }
   };
 
   return (
@@ -29,11 +36,19 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-md text-sm flex items-center gap-2">
+              <AlertCircle size={16} />
+              {error}
+            </div>
+          )}
+
           <div className="input-group">
             <label className="text-sm font-medium text-muted flex items-center gap-2">
               <Mail size={14} /> Email
             </label>
             <input 
+              name="email"
               type="email" 
               placeholder="seu@email.com" 
               required
@@ -45,6 +60,7 @@ export default function LoginPage() {
               <Lock size={14} /> Senha
             </label>
             <input 
+              name="password"
               type="password" 
               placeholder="••••••••" 
               required
@@ -69,7 +85,6 @@ export default function LoginPage() {
           Protegido por criptografia de ponta a ponta.
         </p>
       </motion.div>
-
       <style jsx>{`
         .min-h-screen { min-height: 100vh; }
         .flex { display: flex; }

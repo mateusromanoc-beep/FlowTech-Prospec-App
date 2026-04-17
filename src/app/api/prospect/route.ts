@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { verifySession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { leads } from "@/lib/schema";
 
 export async function POST(req: Request) {
-  const session = await auth();
+  const session = await verifySession();
   
   // Para testes, permitiremos sem sessão se for localhost, mas idealmente deve ser protegido
   // if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
 
   try {
     const body = await req.json();

@@ -1,16 +1,22 @@
 import { db } from "./src/lib/db";
 import { users, leads } from "./src/lib/schema";
+import bcrypt from "bcryptjs";
 
 async function seed() {
   console.log("Seeding database...");
 
-  // Criar usuário Admin padrão
+  // Criar ou atualizar usuário Admin padrão com senha com hash
+  const hashedPassword = await bcrypt.hash("admin", 10);
+  
   await db.insert(users).values({
     name: "Admin User",
-    email: "admin@prospeccao.com",
-    password: "admin", // Em produção, usar hash
+    email: "admin@flowtech.com",
+    password: hashedPassword,
     role: "ADMIN",
-  }).onConflictDoNothing();
+  }).onConflictDoUpdate({
+    target: users.email,
+    set: { password: hashedPassword }
+  });
 
   // Criar alguns leads de exemplo
   await db.insert(leads).values([
