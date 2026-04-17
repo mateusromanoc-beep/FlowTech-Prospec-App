@@ -81,12 +81,15 @@ export default function Dashboard() {
         </div>
         
         <form onSubmit={handleSubmit} className="relative z-10 max-w-4xl mx-auto">
-          <h3 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <Search size={24} className="text-primary" />
-            Launch AI Search Agent
-          </h3>
+          <div className="flex flex-col items-center text-center mb-10">
+            <img src="/logo.png" alt="FlowProspect Logo" className="w-24 h-24 mb-6 rounded-2xl bg-white p-2 object-contain shadow-[0_0_30px_rgba(49,88,255,0.2)]" />
+            <h3 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
+              <Search size={22} className="text-primary" />
+              Preencha os campos e encontre seus leads!
+            </h3>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="input-group">
               <label className="text-sm font-medium text-muted flex items-center gap-2">
                 <MapPin size={14} /> Cidade
@@ -97,6 +100,7 @@ export default function Dashboard() {
                 value={formData.city}
                 onChange={(e) => setFormData({...formData, city: e.target.value})}
                 required
+                className="w-full"
               />
             </div>
             
@@ -110,17 +114,18 @@ export default function Dashboard() {
                 value={formData.subcat}
                 onChange={(e) => setFormData({...formData, subcat: e.target.value})}
                 required
+                className="w-full"
               />
             </div>
           </div>
 
-          <div className="mt-8 flex justify-end">
+          <div className="mt-10 flex justify-center">
             <button 
               type="submit" 
-              className="premium-btn py-3 px-8 text-lg"
+              className="premium-btn py-4 px-12 text-lg w-full md:w-auto"
               disabled={loading}
             >
-              {loading ? <Loader2 className="animate-spin" /> : "Iniciar Prospecção Real-time"}
+              {loading ? <Loader2 className="animate-spin" size={24} /> : "Iniciar Prospecção Real-time"}
             </button>
           </div>
         </form>
