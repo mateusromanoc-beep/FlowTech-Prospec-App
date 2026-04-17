@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Inter } from "next/font/google";
 import { verifySession } from "@/lib/session";
 import { logoutAction } from "./actions";
-import { LogOut, UserCircle, Cpu } from "lucide-react";
+import { LogOut, UserCircle } from "lucide-react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,7 +19,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await verifySession();
+  let session = null;
+  try {
+    session = await verifySession();
+  } catch (e) {
+    console.error("Session verification failed:", e);
+  }
 
   return (
     <html lang="pt-BR">
