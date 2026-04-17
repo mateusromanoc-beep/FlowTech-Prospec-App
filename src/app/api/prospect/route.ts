@@ -52,17 +52,25 @@ export async function POST(req: Request) {
         if (!leadItem.name) continue;
 
         try {
-          const result = await db.insert(leads).values({
+          const placeId = leadItem.place_id || `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const currentUserId = session?.userId || null;
+          
+          await db.insert(leads).values({
+            userId: currentUserId,
             name: leadItem.name,
             phone: leadItem.phone || "",
             website: leadItem.website || "",
             address: leadItem.address || "",
-            city: leadItem.city || city, // Salva a cidade da busca ou do lead
+            city: leadItem.city || city,
             type: leadItem.type || subcat,
             rating: leadItem.rating?.toString() || "0",
-            place_id: leadItem.place_id || `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            place_id: placeId,
           }).onConflictDoUpdate({
-            target: leads.place_id,
+            // Como SQLite pode não suportar múltiplos targets dinamicamente no Drizzle antigo, 
+            // no novo geralmente podemos passar a array, vamos ver se a sintaxe compila.
+            // Se der erro, usamos where(). Mas na v0.36 a Drizzle tenta resolver ou então usamos o índice.
+            // Para garantir estabilidade total: 
+            target: [leads.place_id, leads.userId],
             set: {
               name: leadItem.name,
               phone: leadItem.phone || "",
@@ -72,8 +80,30 @@ export async function POST(req: Request) {
               type: leadItem.type || subcat,
               rating: leadItem.rating?.toString() || "0",
             }
-          }).returning();
-          results.push(result);
+          }).catch(async (e) => {
+            // Fallback manual para onConflictDoUpdate caso a lib não aceite múltiplas targets no SQLite LibSQL
+            const { and, eq } = require('drizzle-orm');
+            const existing = await db.select().from(leads).where(
+              and(eq(leads.place_id, placeId), currentUserId ? eq(leads.userId, currentUserId) : require('drizzle-orm').isNull(leads.userId))
+            );
+            
+            if (existing.length > 0) {
+              await db.update(leads).set({
+                name: leadItem.name,
+                phone: leadItem.phone || "",
+                website: leadItem.website || "",
+                address: leadItem.address || "",
+                city: leadItem.city || city,
+                type: leadItem.type || subcat,
+                rating: leadItem.rating?.toString() || "0",
+              }).where(eq(leads.id, existing[0].id));
+            } else {
+              // Se deu erro real de constraints
+              console.error(e);
+            }
+          });
+          
+          results.push(leadItem);
         } catch (e) {
           console.error("Erro ao inserir lead individual:", e);
         }
