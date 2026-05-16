@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MapPin, Building2, Phone, Filter, ArrowLeft, Download, ExternalLink, MessageSquare } from "lucide-react";
+import { Search, MapPin, Building2, Phone, Filter, ArrowLeft, Download, ExternalLink, MessageSquare, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
@@ -24,6 +24,23 @@ export default function LeadsPage() {
     };
     fetchLeads();
   }, []);
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Tem certeza que deseja excluir este lead?")) return;
+    
+    try {
+      const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setLeads(leads.filter(l => l.id !== id));
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || "Erro ao excluir lead");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro de conexão ao excluir");
+    }
+  };
 
   const exportToCSV = () => {
     const headers = ["Nome", "Telefone", "Website", "Endereço", "Cidade", "Tipo", "Avaliação"];
@@ -123,6 +140,13 @@ export default function LeadsPage() {
                 <div className="flex items-center gap-1 text-yellow-400 text-sm font-bold">
                   ★ {lead.rating}
                 </div>
+                <button 
+                  onClick={() => handleDelete(lead.id)}
+                  className="text-white/30 hover:text-red-400 transition-colors ml-4"
+                  title="Excluir Lead"
+                >
+                  <Trash2 size={18} />
+                </button>
               </div>
 
               <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">{lead.name}</h3>

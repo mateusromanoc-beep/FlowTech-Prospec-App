@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MapPin, Building2, Loader2, Sparkles, CheckCircle2, ArrowRight, Cpu } from "lucide-react";
+import { Search, MapPin, Building2, Loader2, Sparkles, CheckCircle2, ArrowRight, Cpu, Trash2, ShieldAlert } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -9,7 +9,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<{ leads: any[], stats: any }>({
     leads: [],
-    stats: { total: 0, today: 0, cities: 0, successRate: "0%" }
+    stats: { total: 0, today: 0, cities: 0, successRate: "0%", plan: { name: "STARTER", limit: 500, consumed: 0 } }
   });
   const [formData, setFormData] = useState({
     subcat: "",
@@ -57,6 +57,31 @@ export default function Dashboard() {
       alert(`Erro: ${error.message || "Erro ao conectar com o servidor"}`);
     }
   };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Tem certeza que deseja excluir este lead?")) return;
+    
+    try {
+      const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setData({
+          ...data,
+          leads: data.leads.filter(l => l.id !== id)
+        });
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || "Erro ao excluir lead");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro de conexão ao excluir");
+    }
+  };
+
+  const planName = data.stats.plan?.name || "STARTER";
+  const limit = data.stats.plan?.limit || 500;
+  const consumed = data.stats.plan?.consumed || 0;
+  const percentage = limit === -1 ? 0 : Math.min(100, Math.round((consumed / limit) * 100));
 
   return (
     <main className="container animate-fade-in" style={{ padding: '2rem' }}>
@@ -164,6 +189,29 @@ export default function Dashboard() {
             </button>
           </div>
         </form>
+
+        {/* Barra de Progresso do Plano */}
+        <div style={{ maxWidth: '800px', margin: '3rem auto 0', padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <ShieldAlert size={16} style={{ color: 'var(--secondary)' }} />
+              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Plano {planName === "UNLIMITED" ? "Ilimitado" : planName}</span>
+            </div>
+            <span style={{ fontSize: '0.85rem', color: '#8b92a5' }}>
+              {limit === -1 ? `${consumed} consumidos este mês` : `${consumed} / ${limit} leads consumidos`}
+            </span>
+          </div>
+          {limit !== -1 && (
+            <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '99px', overflow: 'hidden' }}>
+              <div style={{ 
+                height: '100%', 
+                width: `${percentage}%`, 
+                background: percentage > 90 ? '#ef4444' : percentage > 75 ? '#f59e0b' : 'var(--primary)',
+                transition: 'width 0.5s ease-in-out'
+              }} />
+            </div>
+          )}
+        </div>
       </section>
 
       {/* ========== STATS ========== */}
@@ -214,6 +262,7 @@ export default function Dashboard() {
                   <th style={{ textAlign: 'left' }}>Tipo</th>
                   <th style={{ textAlign: 'left' }}>Data</th>
                   <th style={{ textAlign: 'left' }}>Status</th>
+                  <th style={{ textAlign: 'right' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -234,6 +283,17 @@ export default function Dashboard() {
                       }}>
                         <CheckCircle2 size={10} /> Concluído
                       </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button 
+                        onClick={() => handleDelete(lead.id)}
+                        style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: '0.5rem' }}
+                        title="Excluir Lead"
+                        onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
+                        onMouseOut={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))}

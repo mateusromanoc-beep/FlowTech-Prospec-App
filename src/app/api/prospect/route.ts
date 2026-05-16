@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { verifySession } from "@/lib/session";
 import { db } from "@/lib/db";
-import { leads } from "@/lib/schema";
+import { leads, users } from "@/lib/schema";
+import { eq, and, gte, sql } from "drizzle-orm";
 
 export async function POST(req: Request) {
   const session = await verifySession();
@@ -13,6 +14,37 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { subcat, city } = body;
+
+    // --- Validação de Plano e Limites ---
+    let limit = 500;
+    let currentCount = 0;
+    let remaining = 500;
+
+    if (session?.userId) {
+      const user = await db.select().from(users).where(eq(users.id, session.userId)).get();
+      if (!user) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+
+      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      
+      const leadsThisMonth = await db.select({ count: sql`count(*)` })
+        .from(leads)
+        .where(and(
+          eq(leads.userId, session.userId),
+          gte(leads.createdAt, startOfMonth)
+        )).get();
+
+      currentCount = Number(leadsThisMonth?.count || 0);
+      
+      if (user.plan === "GROWTH") limit = 1000;
+      else if (user.plan === "UNLIMITED") limit = Infinity;
+
+      remaining = limit - currentCount;
+
+      if (remaining <= 0) {
+        return NextResponse.json({ error: `Você atingiu o limite do seu plano (${user.plan}: ${limit === Infinity ? 'Ilimitado' : limit} leads/mês).` }, { status: 403 });
+      }
+    }
+    // ------------------------------------
 
     const N8N_URL = process.env.N8N_URL || "https://swimmingseal-n8n.cloudfy.live";
     const N8N_API_KEY = process.env.N8N_API_KEY;
@@ -45,6 +77,12 @@ export async function POST(req: Request) {
     if (leadsToProcess.length > 0) {
       console.log(`Processando ${leadsToProcess.length} leads do n8n.`);
       for (const lead of leadsToProcess) {
+        // Se bater no limite durante a inserção, paramos (apenas se não for ilimitado)
+        if (remaining !== Infinity && results.length >= remaining) {
+          console.log("Limite do plano atingido durante inserção");
+          break;
+        }
+
         // Garantindo que estamos acessando os campos corretamente (n8n v2 retorna a parte 'json' ou o objeto flat)
         const leadItem = lead.json || lead;
         

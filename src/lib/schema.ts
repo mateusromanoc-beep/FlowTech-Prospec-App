@@ -24,5 +24,6 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   role: text("role", { enum: ["ADMIN", "USER"] }).notNull().default("USER"),
+  plan: text("plan", { enum: ["STARTER", "GROWTH", "UNLIMITED"] }).notNull().default("STARTER"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });

@@ -14,6 +14,7 @@ async function addUser(formData: FormData) {
   const email = formData.get("email") as string;
   const rawPassword = formData.get("password") as string;
   const role = formData.get("role") as "ADMIN" | "USER";
+  const plan = (formData.get("plan") as "STARTER" | "GROWTH" | "UNLIMITED") || "STARTER";
 
   if (!name || !email || !rawPassword) return;
 
@@ -22,7 +23,7 @@ async function addUser(formData: FormData) {
 
   const password = await bcrypt.hash(rawPassword, 10);
 
-  await db.insert(users).values({ name, email, password, role }).onConflictDoNothing();
+  await db.insert(users).values({ name, email, password, role, plan }).onConflictDoNothing();
   revalidatePath("/admin");
 }
 
@@ -91,6 +92,14 @@ export default async function AdminPage() {
                   <option value="ADMIN">Administrador</option>
                 </select>
               </div>
+              <div>
+                <label className="text-xs text-muted mb-1 block">Plano</label>
+                <select name="plan" className="w-full text-sm p-3 rounded bg-[#1e1f26] border border-white/10 text-white">
+                  <option value="STARTER">Starter (500 leads)</option>
+                  <option value="GROWTH">Growth (1000 leads)</option>
+                  <option value="UNLIMITED">Unlimited (Ilimitado)</option>
+                </select>
+              </div>
               <button type="submit" className="premium-btn w-full py-2 mt-4 text-sm">Criar Conta</button>
             </form>
           </div>
@@ -109,6 +118,7 @@ export default async function AdminPage() {
                     <th className="px-6 py-4 font-medium">Nome</th>
                     <th className="px-6 py-4 font-medium">Email</th>
                     <th className="px-6 py-4 font-medium">Permissão</th>
+                    <th className="px-6 py-4 font-medium">Plano</th>
                     <th className="px-6 py-4 font-medium text-right">Ações</th>
                   </tr>
                 </thead>
@@ -120,6 +130,11 @@ export default async function AdminPage() {
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs ${u.role === 'ADMIN' ? 'bg-amber-500/20 text-amber-500' : 'bg-primary/20 text-primary'}`}>
                           {u.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2 py-1 rounded-full text-xs bg-white/10 text-white/80">
+                          {u.plan}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
