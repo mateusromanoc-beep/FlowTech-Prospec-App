@@ -8,6 +8,19 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 
 // --- Server Actions internas para esta página ---
+async function updateUserPlan(formData: FormData) {
+  "use server";
+  const idValue = formData.get("id");
+  const plan = formData.get("plan") as "STARTER" | "GROWTH" | "UNLIMITED";
+  if (!idValue || !plan) return;
+  
+  const id = parseInt(idValue.toString(), 10);
+  const session = await verifySession();
+  if (session?.role !== "ADMIN") return;
+
+  await db.update(users).set({ plan }).where(eq(users.id, id));
+  revalidatePath("/admin");
+}
 async function addUser(formData: FormData) {
   "use server";
   const name = formData.get("name") as string;
@@ -72,7 +85,7 @@ export default async function AdminPage() {
               <UserPlus className="text-primary" />
               Novo Usuário
             </h2>
-            <form action={addUser} className="space-y-4">
+            <form action={addUser} className="flex flex-col gap-5">
               <div>
                 <label className="text-xs text-muted mb-1 block">Nome Completo</label>
                 <input name="name" type="text" required className="w-full text-sm p-3 rounded bg-white/5 border border-white/10" placeholder="João Silva" />
@@ -133,9 +146,19 @@ export default async function AdminPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="px-2 py-1 rounded-full text-xs bg-white/10 text-white/80">
-                          {u.plan}
-                        </span>
+                        <form action={updateUserPlan} className="inline-flex items-center gap-2">
+                          <input type="hidden" name="id" value={u.id} />
+                          <select 
+                            name="plan" 
+                            defaultValue={u.plan} 
+                            onChange={(e) => e.target.form?.requestSubmit()}
+                            className="bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white/80 outline-none hover:bg-white/5 transition-colors cursor-pointer"
+                          >
+                            <option value="STARTER">Starter</option>
+                            <option value="GROWTH">Growth</option>
+                            <option value="UNLIMITED">Unlimited</option>
+                          </select>
+                        </form>
                       </td>
                       <td className="px-6 py-4 text-right">
                         {u.id !== session.userId && (
