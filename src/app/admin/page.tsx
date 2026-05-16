@@ -151,13 +151,15 @@ export default async function AdminPage() {
                           <select 
                             name="plan" 
                             defaultValue={u.plan} 
-                            onChange={(e) => e.target.form?.requestSubmit()}
                             className="bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white/80 outline-none hover:bg-white/5 transition-colors cursor-pointer"
                           >
                             <option value="STARTER">Starter</option>
                             <option value="GROWTH">Growth</option>
                             <option value="UNLIMITED">Unlimited</option>
                           </select>
+                          <button type="submit" className="text-[10px] uppercase font-bold bg-white/5 hover:bg-white/10 text-white/70 px-2 py-1 rounded transition-colors border border-white/10">
+                            Salvar
+                          </button>
                         </form>
                       </td>
                       <td className="px-6 py-4 text-right">
