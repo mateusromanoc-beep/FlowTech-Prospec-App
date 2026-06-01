@@ -12,8 +12,7 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "1000");
 
     // Lógica Multi-tenant
-    const isUser = session?.role === "USER";
-    const userFilter = isUser && session?.userId ? eq(leads.userId, session.userId) : undefined;
+    const userFilter = session?.userId ? eq(leads.userId, session.userId) : undefined;
 
     // Total de Leads
     const totalQuery = db.select({ value: count() }).from(leads);

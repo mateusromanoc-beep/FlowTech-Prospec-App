@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Search, MapPin, Building2, Phone, Filter, ArrowLeft, Download, ExternalLink, MessageSquare, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import * as XLSX from "xlsx";
 
 export default function LeadsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -68,6 +69,21 @@ export default function LeadsPage() {
     document.body.removeChild(link);
   };
 
+  const exportToXLSX = () => {
+    const ws = XLSX.utils.json_to_sheet(filteredLeads.map(l => ({
+      Nome: l.name,
+      Telefone: l.phone || "",
+      Website: l.website || "",
+      Endereço: l.address || "",
+      Cidade: l.city || "",
+      Tipo: l.type || "",
+      Avaliação: l.rating || ""
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Leads");
+    XLSX.writeFile(wb, `leads_prospeccao_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
+  };
+
   const categories = ["Todos", ...Array.from(new Set(leads.map(l => l.type).filter(Boolean)))];
 
   const filteredLeads = leads.filter(lead => 
@@ -89,9 +105,14 @@ export default function LeadsPage() {
             <p className="text-muted">Gerencie todos os leads capturados pela sua automação.</p>
           </div>
         </div>
-        <button className="premium-btn" onClick={exportToCSV} disabled={filteredLeads.length === 0}>
-          <Download size={18} /> Exportar CSV
-        </button>
+        <div className="flex gap-2">
+          <button className="premium-btn" onClick={exportToCSV} disabled={filteredLeads.length === 0}>
+            <Download size={18} /> CSV
+          </button>
+          <button className="premium-btn" onClick={exportToXLSX} disabled={filteredLeads.length === 0} style={{ background: '#107c41', borderColor: '#185c37' }}>
+            <Download size={18} /> XLSX
+          </button>
+        </div>
       </header>
 
       {/* Controles de Filtro e Busca */}
