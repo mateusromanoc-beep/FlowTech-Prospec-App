@@ -51,14 +51,23 @@ export async function clearSession() {
 }
 
 export async function verifySession() {
-  const cookieStore = await cookies();
-  const cookie = cookieStore.get("session")?.value;
-  const session = await decrypt(cookie);
+  try {
+    const cookieStore = await cookies();
+    const cookie = cookieStore.get("session")?.value;
+    console.log("=== VERIFY SESSION COOKIE VALUE ===", cookie ? "Presente" : "Ausente");
+    if (!cookie) return null;
 
-  if (!session?.userId) {
+    const session = await decrypt(cookie);
+    console.log("=== VERIFY SESSION DECRYPTED ===", session);
+
+    if (!session?.userId) {
+      return null;
+    }
+
+    return { isAuth: true, userId: session.userId, role: session.role, name: session.name };
+  } catch (err) {
+    console.error("Erro no verifySession:", err);
     return null;
   }
-
-  return { isAuth: true, userId: session.userId, role: session.role, name: session.name };
 }
 

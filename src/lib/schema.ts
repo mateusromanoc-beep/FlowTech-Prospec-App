@@ -27,3 +27,15 @@ export const users = sqliteTable("users", {
   plan: text("plan", { enum: ["STARTER", "GROWTH", "UNLIMITED"] }).notNull().default("STARTER"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
+
+export const agentProfiles = sqliteTable("agent_profiles", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).unique().notNull(),
+  companyName: text("company_name").notNull(),
+  businessActivity: text("business_activity").notNull(),
+  servicesOffered: text("services_offered").notNull(),
+  targetAudience: text("target_audience"),
+  customTone: text("custom_tone").default("profissional"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+

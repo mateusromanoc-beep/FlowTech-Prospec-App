@@ -22,6 +22,8 @@ export async function middleware(req: NextRequest) {
   const isPublicRoute = publicRoutes.some(route => path.startsWith(route));
   const cookie = req.cookies.get("session")?.value;
 
+  console.log("=== MIDDLEWARE ===", { path, isPublicRoute, hasCookie: !!cookie });
+
   let session = null;
 
   if (cookie) {

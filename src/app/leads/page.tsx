@@ -1,15 +1,35 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MapPin, Building2, Phone, Filter, ArrowLeft, Download, ExternalLink, MessageSquare, Trash2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Search, MapPin, Building2, Phone, Filter, ArrowLeft, Download, ExternalLink, MessageSquare, Trash2, Bot, Copy, CheckCircle, X, Loader2, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import * as XLSX from "xlsx";
+
+// Formatar número para WhatsApp (padrão BR +55)
+function formatPhoneForWhatsApp(phone: string): string {
+  // Remove tudo que não é número
+  let cleaned = phone.replace(/\D/g, "");
+  // Se começar com 0, remove o 0
+  if (cleaned.startsWith("0")) cleaned = cleaned.substring(1);
+  // Se não começar com 55 (código BR), adiciona
+  if (!cleaned.startsWith("55")) cleaned = "55" + cleaned;
+  return cleaned;
+}
 
 export default function LeadsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("Todos");
   const [leads, setLeads] = useState<any[]>([]);
+
+  // Estado do modal de IA
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiMessage, setAiMessage] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
 
   // Carregamento inicial de dados (Real)
   useEffect(() => {
@@ -41,6 +61,71 @@ export default function LeadsPage() {
       console.error(err);
       alert("Erro de conexão ao excluir");
     }
+  };
+
+  // Gerar mensagem de abordagem via IA
+  const handleGenerateMessage = async (lead: any) => {
+    setSelectedLead(lead);
+    setShowAIModal(true);
+    setAiLoading(true);
+    setAiMessage("");
+    setAiError("");
+    setCopied(false);
+
+    try {
+      const res = await fetch("/api/ai/generate-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: lead.name,
+          type: lead.type,
+          city: lead.city,
+          phone: lead.phone,
+          website: lead.website,
+          rating: lead.rating,
+          review_summary: lead.review_summary,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erro ao gerar mensagem");
+      }
+
+      const data = await res.json();
+      setAiMessage(data.message);
+    } catch (err: any) {
+      console.error("Erro IA:", err);
+      setAiError(err.message || "Não foi possível gerar a mensagem. Tente novamente.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // Copiar mensagem para clipboard
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(aiMessage);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // Fallback para navegadores mais antigos
+      const textarea = document.createElement("textarea");
+      textarea.value = aiMessage;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
+  // Gerar link do WhatsApp com mensagem
+  const getWhatsAppLinkWithMessage = (phone: string, message: string) => {
+    const formattedPhone = formatPhoneForWhatsApp(phone);
+    const encodedMessage = encodeURIComponent(message);
+    return `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
   };
 
   const exportToCSV = () => {
@@ -195,22 +280,45 @@ export default function LeadsPage() {
                 )}
               </div>
 
-              <div className="flex gap-2">
-                <a 
-                  href={lead.phone ? `tel:${lead.phone}` : "#"}
-                  className={`flex-1 flex items-center justify-center gap-2 premium-btn ${!lead.phone && 'opacity-50 pointer-events-none'}`}
-                >
-                  <Phone size={16} /> Ligar
-                </a>
-                {lead.website && (
+              {/* Botões de Ação */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {/* Linha 1: Botão Ligar + Website */}
+                <div className="flex gap-2">
                   <a 
-                    href={lead.website}
-                    target="_blank"
-                    className="p-3 glass hover:bg-primary/20 transition-colors"
+                    href={lead.phone ? `tel:${lead.phone}` : "#"}
+                    className={`flex-1 flex items-center justify-center gap-2 premium-btn ${!lead.phone && 'opacity-50 pointer-events-none'}`}
                   >
-                    <ExternalLink size={18} />
+                    <Phone size={16} /> Ligar
                   </a>
-                )}
+                  {lead.website && (
+                    <a 
+                      href={lead.website}
+                      target="_blank"
+                      className="p-3 glass hover:bg-primary/20 transition-colors"
+                    >
+                      <ExternalLink size={18} />
+                    </a>
+                  )}
+                </div>
+
+                {/* Linha 2: WhatsApp + Gerar Abordagem IA */}
+                <div className="flex gap-2">
+                  <a
+                    href={lead.phone ? `https://wa.me/${formatPhoneForWhatsApp(lead.phone)}` : "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`whatsapp-btn ${!lead.phone ? 'opacity-40 pointer-events-none' : ''}`}
+                    style={!lead.phone ? { pointerEvents: 'none' } : {}}
+                  >
+                    <MessageCircle size={16} /> WhatsApp
+                  </a>
+                  <button
+                    onClick={() => handleGenerateMessage(lead)}
+                    className="ai-btn"
+                  >
+                    <Bot size={16} /> Abordagem IA
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -221,6 +329,126 @@ export default function LeadsPage() {
         <div className="text-center py-20 bg-white/5 rounded-xl border border-dashed border-white/10">
           <p className="text-muted">Nenhum lead encontrado com estes filtros.</p>
         </div>
+      )}
+
+      {/* ========== MODAL DE IA (renderizado via Portal no body) ========== */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showAIModal && (
+            <motion.div
+              className="ai-modal-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={(e) => { if (e.target === e.currentTarget && !aiLoading) setShowAIModal(false); }}
+            >
+              <motion.div
+                className="ai-modal"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              >
+                {/* Header do Modal */}
+                <div className="ai-modal-header">
+                  <div style={{ padding: '0.5rem', background: 'rgba(139, 92, 246, 0.15)', borderRadius: '0.75rem' }}>
+                    <Bot size={22} style={{ color: '#8B5CF6' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h3>Mensagem de Abordagem</h3>
+                    {selectedLead && (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '0.15rem' }}>
+                        Para: {selectedLead.name}
+                      </p>
+                    )}
+                  </div>
+                  {!aiLoading && (
+                    <button
+                      onClick={() => setShowAIModal(false)}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '0.5rem' }}
+                    >
+                      <X size={20} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Conteúdo */}
+                {aiLoading ? (
+                  <div>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Loader2 size={16} className="animate-spin" style={{ color: '#8B5CF6' }} />
+                      Gerando mensagem personalizada...
+                    </p>
+                    <div className="ai-loading-skeleton">
+                      <div className="skeleton-line" />
+                      <div className="skeleton-line" />
+                      <div className="skeleton-line" />
+                      <div className="skeleton-line" />
+                      <div className="skeleton-line" />
+                      <div className="skeleton-line" />
+                    </div>
+                  </div>
+                ) : aiError ? (
+                  <div>
+                    <div className="ai-modal-message" style={{ borderColor: 'rgba(239, 68, 68, 0.2)', color: '#f87171' }}>
+                      ⚠️ {aiError}
+                    </div>
+                    <div className="ai-modal-actions">
+                      <button
+                        onClick={() => selectedLead && handleGenerateMessage(selectedLead)}
+                        className="premium-btn"
+                        style={{ fontSize: '0.85rem', padding: '0.75rem 1.5rem' }}
+                      >
+                        Tentar novamente
+                      </button>
+                      <button
+                        onClick={() => setShowAIModal(false)}
+                        className="outline-btn"
+                        style={{ fontSize: '0.85rem', padding: '0.75rem 1.5rem' }}
+                      >
+                        Fechar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="ai-modal-message">
+                      {aiMessage}
+                    </div>
+                    <div className="ai-modal-actions">
+                      <button
+                        onClick={handleCopy}
+                        className={`premium-btn ${copied ? 'copy-btn-success' : ''}`}
+                        style={{ fontSize: '0.85rem', padding: '0.75rem 1.5rem' }}
+                      >
+                        {copied ? <><CheckCircle size={16} /> Copiado!</> : <><Copy size={16} /> Copiar</>}
+                      </button>
+                      {selectedLead?.phone && (
+                        <a
+                          href={getWhatsAppLinkWithMessage(selectedLead.phone, aiMessage)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="whatsapp-btn"
+                          style={{ fontSize: '0.85rem', padding: '0.75rem 1.5rem' }}
+                        >
+                          <MessageCircle size={16} /> Enviar via WhatsApp
+                        </a>
+                      )}
+                      <button
+                        onClick={() => selectedLead && handleGenerateMessage(selectedLead)}
+                        className="outline-btn"
+                        style={{ fontSize: '0.85rem', padding: '0.75rem 1.5rem' }}
+                      >
+                        Regenerar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
 
       <style jsx>{`
@@ -241,11 +469,11 @@ export default function LeadsPage() {
         .italic { font-style: italic; }
         
         @media (min-width: 768px) {
-          .md\:flex-row { flex-direction: row; }
-          .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .md\\:flex-row { flex-direction: row; }
+          .md\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
         @media (min-width: 1280px) {
-          .xl\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+          .xl\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
       `}</style>
     </main>
