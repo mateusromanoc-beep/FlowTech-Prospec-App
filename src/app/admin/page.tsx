@@ -26,7 +26,7 @@ async function addUser(formData: FormData) {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const rawPassword = formData.get("password") as string;
-  const role = formData.get("role") as "ADMIN" | "USER";
+  const role = formData.get("role") as "ADMIN" | "USER" | "USER_PRO";
   const plan = (formData.get("plan") as "STARTER" | "GROWTH" | "UNLIMITED") || "STARTER";
 
   if (!name || !email || !rawPassword) return;
@@ -102,6 +102,7 @@ export default async function AdminPage() {
                 <label className="text-xs text-muted mb-1 block">Tipo de Acesso</label>
                 <select name="role" className="w-full text-sm p-3 rounded bg-[#1e1f26] border border-white/10 text-white">
                   <option value="USER">Usuário Comum</option>
+                  <option value="USER_PRO">Usuário Pro</option>
                   <option value="ADMIN">Administrador</option>
                 </select>
               </div>
@@ -141,7 +142,7 @@ export default async function AdminPage() {
                       <td className="px-6 py-4 text-white font-medium">{u.name}</td>
                       <td className="px-6 py-4">{u.email}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs ${u.role === 'ADMIN' ? 'bg-amber-500/20 text-amber-500' : 'bg-primary/20 text-primary'}`}>
+                        <span className={`px-2 py-1 rounded-full text-xs ${u.role === 'ADMIN' ? 'bg-amber-500/20 text-amber-500' : u.role === 'USER_PRO' ? 'bg-purple-500/20 text-purple-400' : 'bg-primary/20 text-primary'}`}>
                           {u.role}
                         </span>
                       </td>

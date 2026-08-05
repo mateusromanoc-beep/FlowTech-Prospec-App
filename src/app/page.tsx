@@ -13,7 +13,8 @@ export default function Dashboard() {
   });
   const [formData, setFormData] = useState({
     subcat: "",
-    city: ""
+    city: "",
+    source: "google" // "google" ou "linkedin"
   });
 
   const fetchData = async () => {
@@ -147,10 +148,48 @@ export default function Dashboard() {
         
         <form onSubmit={handleSubmit} style={{ position: 'relative', zIndex: 1, maxWidth: '800px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
               <Search size={20} style={{ color: 'var(--secondary)' }} />
               Preencha os campos e encontre seus leads!
             </h3>
+
+            {/* Selector de Origem Premium */}
+            <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, source: "google" })}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '25px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: formData.source === "google" ? 'var(--primary)' : 'transparent',
+                  color: formData.source === "google" ? 'white' : '#8b92a5'
+                }}
+              >
+                🌐 Google Maps (Empresas)
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, source: "linkedin" })}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '25px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: formData.source === "linkedin" ? '#0077b5' : 'transparent',
+                  color: formData.source === "linkedin" ? 'white' : '#8b92a5'
+                }}
+              >
+                💼 LinkedIn (Decisores)
+              </button>
+            </div>
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
@@ -160,7 +199,7 @@ export default function Dashboard() {
               </label>
               <input 
                 type="text" 
-                placeholder="Ex: Americana" 
+                placeholder={formData.source === "linkedin" ? "Ex: São Paulo" : "Ex: Americana"} 
                 value={formData.city}
                 onChange={(e) => setFormData({...formData, city: e.target.value})}
                 required
@@ -169,11 +208,11 @@ export default function Dashboard() {
             
             <div className="input-group">
               <label style={{ fontSize: '0.85rem', fontWeight: 500, color: '#8b92a5', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Building2 size={14} /> Tipologia / Ramo
+                <Building2 size={14} /> {formData.source === "linkedin" ? "Cargo / Nicho" : "Tipologia / Ramo"}
               </label>
               <input 
                 type="text" 
-                placeholder="Ex: Autopeças" 
+                placeholder={formData.source === "linkedin" ? "Ex: CEO Tecnologia" : "Ex: Autopeças"} 
                 value={formData.subcat}
                 onChange={(e) => setFormData({...formData, subcat: e.target.value})}
                 required
@@ -257,9 +296,10 @@ export default function Dashboard() {
             <table>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  <th style={{ textAlign: 'left' }}>Empresa</th>
+                  <th style={{ textAlign: 'left' }}>Nome / Empresa</th>
                   <th style={{ textAlign: 'left' }}>Cidade</th>
-                  <th style={{ textAlign: 'left' }}>Tipo</th>
+                  <th style={{ textAlign: 'left' }}>Tipo / Ramo</th>
+                  <th style={{ textAlign: 'left' }}>Origem</th>
                   <th style={{ textAlign: 'left' }}>Data</th>
                   <th style={{ textAlign: 'left' }}>Status</th>
                   <th style={{ textAlign: 'right' }}>Ações</th>
@@ -271,6 +311,17 @@ export default function Dashboard() {
                     <td style={{ fontWeight: 500 }}>{lead.name}</td>
                     <td style={{ color: '#8b92a5' }}>{lead.city}</td>
                     <td style={{ color: '#8b92a5' }}>{lead.type}</td>
+                    <td>
+                      <span style={{
+                        padding: '0.2rem 0.6rem', borderRadius: '4px',
+                        background: lead.source === "linkedin" ? 'rgba(0, 119, 181, 0.15)' : 'rgba(235, 64, 52, 0.15)',
+                        color: lead.source === "linkedin" ? '#0077b5' : '#eb4034',
+                        fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase',
+                        letterSpacing: '0.05em', display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                      }}>
+                        {lead.source === "linkedin" ? "💼 LinkedIn" : "🌐 Google Maps"}
+                      </span>
+                    </td>
                     <td style={{ color: '#8b92a5', fontSize: '0.85rem' }}>
                       {new Date(lead.createdAt).toLocaleDateString('pt-BR')}
                     </td>

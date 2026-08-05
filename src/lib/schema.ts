@@ -12,6 +12,8 @@ export const leads = sqliteTable("leads", {
   rating: text("rating"),
   place_id: text("place_id"),
   review_summary: text("review_summary"),
+  generatedHtml: text("generated_html"),
+  source: text("source").default("google"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 }, (t) => ({
   unq: unique().on(t.place_id, t.userId),
@@ -23,7 +25,7 @@ export const users = sqliteTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role", { enum: ["ADMIN", "USER"] }).notNull().default("USER"),
+  role: text("role", { enum: ["ADMIN", "USER", "USER_PRO"] }).notNull().default("USER"),
   plan: text("plan", { enum: ["STARTER", "GROWTH", "UNLIMITED"] }).notNull().default("STARTER"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });

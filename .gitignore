@@ -25,3 +25,4 @@ sqlite.db-journal
 Thumbs.db
 dev.log
 dev_debug.log
+.vercel

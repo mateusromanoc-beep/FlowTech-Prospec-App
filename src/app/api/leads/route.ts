@@ -67,6 +67,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       leads: list,
+      userRole: session?.role || "USER",
       stats: {
         total,
         today: todayCount,

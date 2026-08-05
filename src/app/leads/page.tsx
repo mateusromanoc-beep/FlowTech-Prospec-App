@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Search, MapPin, Building2, Phone, Filter, ArrowLeft, Download, ExternalLink, MessageSquare, Trash2, Bot, Copy, CheckCircle, X, Loader2, MessageCircle } from "lucide-react";
+import { Search, MapPin, Building2, Phone, Filter, ArrowLeft, Download, ExternalLink, MessageSquare, Trash2, Bot, Copy, CheckCircle, X, Loader2, MessageCircle, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import * as XLSX from "xlsx";
@@ -19,12 +19,15 @@ function formatPhoneForWhatsApp(phone: string): string {
 }
 
 export default function LeadsPage() {
+  const [filterSource, setFilterSource] = useState("Todos");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("Todos");
   const [leads, setLeads] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState("USER");
 
   // Estado do modal de IA
   const [showAIModal, setShowAIModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [aiMessage, setAiMessage] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
@@ -37,8 +40,8 @@ export default function LeadsPage() {
       try {
         const response = await fetch("/api/leads");
         const data = await response.json();
-        // Ajuste para o novo formato { leads: [], stats: {} }
         setLeads(data.leads || []);
+        setUserRole(data.userRole || "USER");
       } catch (error) {
         console.error("Erro ao carregar leads:", error);
       }
@@ -109,7 +112,6 @@ export default function LeadsPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // Fallback para navegadores mais antigos
       const textarea = document.createElement("textarea");
       textarea.value = aiMessage;
       document.body.appendChild(textarea);
@@ -129,7 +131,7 @@ export default function LeadsPage() {
   };
 
   const exportToCSV = () => {
-    const headers = ["Nome", "Telefone", "Website", "Endereço", "Cidade", "Tipo", "Avaliação"];
+    const headers = ["Nome", "Telefone", "Website", "Endereço", "Cidade", "Tipo", "Avaliação", "Origem"];
     const csvContent = [
       headers.join(","),
       ...filteredLeads.map(l => [
@@ -139,7 +141,8 @@ export default function LeadsPage() {
         `"${l.address || ""}"`,
         `"${l.city || ""}"`,
         `"${l.type || ""}"`,
-        `"${l.rating || ""}"`
+        `"${l.rating || ""}"`,
+        `"${l.source || "google"}"`
       ].join(","))
     ].join("\n");
 
@@ -162,7 +165,8 @@ export default function LeadsPage() {
       Endereço: l.address || "",
       Cidade: l.city || "",
       Tipo: l.type || "",
-      Avaliação: l.rating || ""
+      Avaliação: l.rating || "",
+      Origem: l.source === "linkedin" ? "LinkedIn" : "Google Maps"
     })));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Leads");
@@ -174,7 +178,8 @@ export default function LeadsPage() {
   const filteredLeads = leads.filter(lead => 
     (lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
      lead.city.toLowerCase().includes(searchTerm.toLowerCase())) &&
-    (filterType === "Todos" || lead.type === filterType)
+    (filterType === "Todos" || lead.type === filterType) &&
+    (filterSource === "Todos" || (filterSource === "google" && (lead.source === "google" || !lead.source)) || lead.source === filterSource)
   );
 
   return (
@@ -217,6 +222,16 @@ export default function LeadsPage() {
           <Filter size={18} className="text-muted" />
           <select 
             className="bg-white/5 border-white/10 rounded-lg outline-none py-2 px-4 text-white cursor-pointer hover:bg-white/10"
+            value={filterSource}
+            onChange={(e) => setFilterSource(e.target.value)}
+          >
+            <option value="Todos">Todas as Origens</option>
+            <option value="google">🌐 Google Maps</option>
+            <option value="linkedin">💼 LinkedIn</option>
+          </select>
+
+          <select 
+            className="bg-white/5 border-white/10 rounded-lg outline-none py-2 px-4 text-white cursor-pointer hover:bg-white/10"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
           >
@@ -240,19 +255,35 @@ export default function LeadsPage() {
               className="glass p-6 hover:border-primary/50 transition-colors group relative"
             >
               <div className="flex justify-between items-start mb-4">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Building2 size={24} className="text-primary" />
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Building2 size={24} className="text-primary" />
+                  </div>
+                  {/* Badge de Origem */}
+                  <span style={{
+                    padding: '0.2rem 0.6rem',
+                    borderRadius: '4px',
+                    fontSize: '0.65rem',
+                    fontWeight: 800,
+                    background: lead.source === "linkedin" ? 'rgba(0, 119, 181, 0.15)' : 'rgba(235, 64, 52, 0.15)',
+                    color: lead.source === "linkedin" ? '#0077b5' : '#eb4034',
+                    textTransform: 'uppercase'
+                  }}>
+                    {lead.source === "linkedin" ? "LinkedIn" : "Google Maps"}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1 text-yellow-400 text-sm font-bold">
-                  ★ {lead.rating}
+                <div className="flex items-center gap-1">
+                  <div className="text-yellow-400 text-sm font-bold">
+                    ★ {lead.rating}
+                  </div>
+                  <button 
+                    onClick={() => handleDelete(lead.id)}
+                    className="text-white/30 hover:text-red-400 transition-colors ml-4"
+                    title="Excluir Lead"
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
-                <button 
-                  onClick={() => handleDelete(lead.id)}
-                  className="text-white/30 hover:text-red-400 transition-colors ml-4"
-                  title="Excluir Lead"
-                >
-                  <Trash2 size={18} />
-                </button>
               </div>
 
               <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">{lead.name}</h3>
@@ -267,8 +298,8 @@ export default function LeadsPage() {
                 {lead.website && (
                   <div className="flex items-center gap-2">
                     <ExternalLink size={14} className="text-primary" /> 
-                    <a href={lead.website} target="_blank" rel="noopener noreferrer" className="hover:underline text-blue-400">
-                      Visitar Website
+                    <a href={lead.website} target="_blank" rel="noopener noreferrer" className="hover:underline text-blue-400 truncate max-w-[200px]">
+                      {lead.source === "linkedin" ? "Abrir LinkedIn" : "Visitar Website"}
                     </a>
                   </div>
                 )}
@@ -282,15 +313,27 @@ export default function LeadsPage() {
 
               {/* Botões de Ação */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {/* Linha 1: Botão Ligar + Website */}
+                {/* Linha 1: Ação Principal baseada na Origem */}
                 <div className="flex gap-2">
-                  <a 
-                    href={lead.phone ? `tel:${lead.phone}` : "#"}
-                    className={`flex-1 flex items-center justify-center gap-2 premium-btn ${!lead.phone && 'opacity-50 pointer-events-none'}`}
-                  >
-                    <Phone size={16} /> Ligar
-                  </a>
-                  {lead.website && (
+                  {lead.source === "linkedin" ? (
+                    <a 
+                      href={lead.website || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-2 premium-btn"
+                      style={{ background: '#0077b5', borderColor: '#005f91' }}
+                    >
+                      <ExternalLink size={16} /> Abrir LinkedIn
+                    </a>
+                  ) : (
+                    <a 
+                      href={lead.phone ? `tel:${lead.phone}` : "#"}
+                      className={`flex-1 flex items-center justify-center gap-2 premium-btn ${!lead.phone && 'opacity-50 pointer-events-none'}`}
+                    >
+                      <Phone size={16} /> Ligar
+                    </a>
+                  )}
+                  {lead.website && lead.source !== "linkedin" && (
                     <a 
                       href={lead.website}
                       target="_blank"
@@ -301,23 +344,70 @@ export default function LeadsPage() {
                   )}
                 </div>
 
-                {/* Linha 2: WhatsApp + Gerar Abordagem IA */}
+                {/* Linha 2: Abordagem e Contato Secundário */}
                 <div className="flex gap-2">
-                  <a
-                    href={lead.phone ? `https://wa.me/${formatPhoneForWhatsApp(lead.phone)}` : "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`whatsapp-btn ${!lead.phone ? 'opacity-40 pointer-events-none' : ''}`}
-                    style={!lead.phone ? { pointerEvents: 'none' } : {}}
-                  >
-                    <MessageCircle size={16} /> WhatsApp
-                  </a>
-                  <button
-                    onClick={() => handleGenerateMessage(lead)}
-                    className="ai-btn"
-                  >
-                    <Bot size={16} /> Abordagem IA
-                  </button>
+                  {lead.source === "linkedin" ? (
+                    <button
+                      onClick={() => handleGenerateMessage(lead)}
+                      className="flex-1 flex items-center justify-center gap-2 ai-btn"
+                      style={{ background: 'linear-gradient(135deg, #0077b5 0%, #8b5cf6 100%)', borderColor: '#8b5cf6' }}
+                    >
+                      <Bot size={16} /> Abordagem InMail/IA
+                    </button>
+                  ) : (
+                    <>
+                      <a
+                        href={lead.phone ? `https://wa.me/${formatPhoneForWhatsApp(lead.phone)}` : "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`whatsapp-btn ${!lead.phone ? 'opacity-40 pointer-events-none' : ''}`}
+                        style={!lead.phone ? { pointerEvents: 'none' } : {}}
+                      >
+                        <MessageCircle size={16} /> WhatsApp
+                      </a>
+                      <button
+                        onClick={() => handleGenerateMessage(lead)}
+                        className="ai-btn"
+                      >
+                        <Bot size={16} /> Abordagem IA
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Linha 3: Criador de Sites IA */}
+                <div className="flex gap-2">
+                  {userRole === "USER_PRO" || userRole === "ADMIN" ? (
+                    <>
+                      <Link
+                        href={`/site-builder?leadId=${lead.id}`}
+                        className="flex-1 flex items-center justify-center gap-2 premium-btn"
+                        style={{ background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)', borderColor: '#d946ef', marginTop: '0.25rem' }}
+                      >
+                        <Sparkles size={16} /> {lead.generatedHtml ? "Editar Site IA" : "Criar Site IA"}
+                      </Link>
+                      {lead.generatedHtml && (
+                        <a
+                          href={`/preview/${lead.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-3 glass hover:bg-primary/20 transition-colors flex items-center justify-center"
+                          style={{ marginTop: '0.25rem', borderRadius: '9999px', width: '46px', height: '46px' }}
+                          title="Visualizar site publicado do cliente"
+                        >
+                          <ExternalLink size={18} style={{ color: 'var(--secondary)' }} />
+                        </a>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="flex-1 flex items-center justify-center gap-2 premium-btn"
+                      style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px dashed rgba(255, 255, 255, 0.15)', color: 'rgba(255, 255, 255, 0.4)', boxShadow: 'none', marginTop: '0.25rem' }}
+                    >
+                      <Sparkles size={16} /> Criar Site IA 🔒
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -444,6 +534,50 @@ export default function LeadsPage() {
                     </div>
                   </div>
                 )}
+              </motion.div>
+            </motion.div>
+          )}
+          {showUpgradeModal && (
+            <motion.div
+              className="ai-modal-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowUpgradeModal(false)}
+            >
+              <motion.div
+                className="ai-modal"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                style={{ maxWidth: '450px', padding: '2.5rem', textAlign: 'center' }}
+              >
+                <div style={{ display: 'inline-flex', padding: '1rem', background: 'rgba(236, 72, 153, 0.15)', borderRadius: '1.25rem', marginBottom: '1.5rem', border: '1px solid rgba(236, 72, 153, 0.3)' }}>
+                  <Sparkles size={40} style={{ color: '#ec4899' }} />
+                </div>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.75rem', color: 'white' }}>Recurso Exclusivo User Pro</h3>
+                <p style={{ color: 'var(--muted)', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '2rem' }}>
+                  A criação automatizada de websites com IA baseada nas informações do Google Maps está disponível apenas para parceiros com acesso <strong>User Pro</strong>.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <a
+                    href="https://wa.me/5511999999999?text=Ol%C3%A1%2C%20gostaria%20de%20solicitar%20o%20upgrade%20para%20o%20plano%20User%20Pro!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="premium-btn"
+                    style={{ background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)', borderColor: '#d946ef', width: '100%', fontSize: '0.9rem' }}
+                  >
+                    Falar com Suporte & Fazer Upgrade
+                  </a>
+                  <button
+                    onClick={() => setShowUpgradeModal(false)}
+                    className="outline-btn"
+                    style={{ width: '100%', fontSize: '0.9rem' }}
+                  >
+                    Voltar
+                  </button>
+                </div>
               </motion.div>
             </motion.div>
           )}
