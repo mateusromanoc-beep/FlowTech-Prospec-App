@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Search, MapPin, Building2, Phone, Filter, ArrowLeft, Download, ExternalLink, MessageSquare, Trash2, Bot, Copy, CheckCircle, X, Loader2, MessageCircle, Sparkles } from "lucide-react";
+import { Search, MapPin, Building2, Phone, Filter, ArrowLeft, Download, ExternalLink, MessageSquare, Trash2, Bot, Copy, CheckCircle, X, Loader2, MessageCircle, Sparkles, User, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import * as XLSX from "xlsx";
@@ -20,10 +20,14 @@ function formatPhoneForWhatsApp(phone: string): string {
 
 export default function LeadsPage() {
   const [filterSource, setFilterSource] = useState("Todos");
+  const [filterUser, setFilterUser] = useState<string>("me");
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("Todos");
   const [leads, setLeads] = useState<any[]>([]);
   const [userRole, setUserRole] = useState("USER");
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Estado do modal de IA
   const [showAIModal, setShowAIModal] = useState(false);
@@ -34,20 +38,43 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [copied, setCopied] = useState(false);
 
-  // Carregamento inicial de dados (Real)
+  // Ler o parâmetro userId da URL no carregamento inicial
   useEffect(() => {
-    const fetchLeads = async () => {
-      try {
-        const response = await fetch("/api/leads");
-        const data = await response.json();
-        setLeads(data.leads || []);
-        setUserRole(data.userRole || "USER");
-      } catch (error) {
-        console.error("Erro ao carregar leads:", error);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlUserId = params.get("userId");
+      if (urlUserId) {
+        setFilterUser(urlUserId);
       }
-    };
-    fetchLeads();
+    }
   }, []);
+
+  // Carregamento de dados com suporte a filtro de usuário para ADMIN
+  const fetchLeads = async (selectedUser = filterUser) => {
+    setLoading(true);
+    try {
+      let url = "/api/leads";
+      if (selectedUser && selectedUser !== "me") {
+        url += `?userId=${selectedUser}`;
+      }
+      const response = await fetch(url);
+      const data = await response.json();
+      setLeads(data.leads || []);
+      setUserRole(data.userRole || "USER");
+      setCurrentUserId(data.currentUserId || null);
+      if (data.users) {
+        setAvailableUsers(data.users);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar leads:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeads(filterUser);
+  }, [filterUser]);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este lead?")) return;
@@ -131,7 +158,7 @@ export default function LeadsPage() {
   };
 
   const exportToCSV = () => {
-    const headers = ["Nome", "Telefone", "Website", "Endereço", "Cidade", "Tipo", "Avaliação", "Origem"];
+    const headers = ["Nome", "Telefone", "Website", "Endereço", "Cidade", "Tipo", "Avaliação", "Origem", "Usuário"];
     const csvContent = [
       headers.join(","),
       ...filteredLeads.map(l => [
@@ -142,7 +169,8 @@ export default function LeadsPage() {
         `"${l.city || ""}"`,
         `"${l.type || ""}"`,
         `"${l.rating || ""}"`,
-        `"${l.source || "google"}"`
+        `"${l.source || "google"}"`,
+        `"${l.userName || ""}"`
       ].join(","))
     ].join("\n");
 
@@ -166,7 +194,8 @@ export default function LeadsPage() {
       Cidade: l.city || "",
       Tipo: l.type || "",
       Avaliação: l.rating || "",
-      Origem: l.source === "linkedin" ? "LinkedIn" : "Google Maps"
+      Origem: l.source === "linkedin" ? "LinkedIn" : "Google Maps",
+      Usuario: l.userName || ""
     })));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Leads");
@@ -192,7 +221,13 @@ export default function LeadsPage() {
           </Link>
           <div>
             <h1 className="text-3xl font-bold text-white">Explorador FlowTech</h1>
-            <p className="text-muted">Gerencie todos os leads capturados pela sua automação.</p>
+            <p className="text-muted">
+              {userRole === "ADMIN" && filterUser !== "me" && filterUser !== "all" ? (
+                <>Auditoria individual de leads do usuário selecionado.</>
+              ) : (
+                <>Gerencie todos os leads capturados pela sua automação.</>
+              )}
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -206,37 +241,61 @@ export default function LeadsPage() {
       </header>
 
       {/* Controles de Filtro e Busca */}
-      <div className="glass p-6 mb-8 flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
+      <div className="glass p-6 mb-8 flex flex-col md:flex-row gap-4 items-center flex-wrap">
+        <div className="relative flex-1 min-w-[240px] w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
           <input 
             type="text" 
             placeholder="Buscar por nome ou cidade..." 
-            className="w-full pl-10 bg-white/5 border-white/10 rounded-lg focus:border-primary outline-none py-2"
+            className="w-full pl-10 bg-white/5 border-white/10 rounded-lg focus:border-primary outline-none py-2 text-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <Filter size={18} className="text-muted" />
-          <select 
-            className="bg-white/5 border-white/10 rounded-lg outline-none py-2 px-4 text-white cursor-pointer hover:bg-white/10"
-            value={filterSource}
-            onChange={(e) => setFilterSource(e.target.value)}
-          >
-            <option value="Todos">Todas as Origens</option>
-            <option value="google">🌐 Google Maps</option>
-            <option value="linkedin">💼 LinkedIn</option>
-          </select>
+        <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
+          {/* Seletor de Usuário exclusivo para ADMIN */}
+          {userRole === "ADMIN" && (
+            <div className="flex items-center gap-1.5 bg-white/5 border border-primary/30 rounded-lg px-2 py-1">
+              <Users size={16} className="text-primary" />
+              <select 
+                className="bg-transparent border-none outline-none py-1 px-1 text-white text-xs font-semibold cursor-pointer"
+                value={filterUser}
+                onChange={(e) => setFilterUser(e.target.value)}
+              >
+                <option value="me" className="bg-[#1e1f26]">Meus Leads</option>
+                <option value="all" className="bg-[#1e1f26]">Todos os Usuários</option>
+                <optgroup label="Usuários Individuais" className="bg-[#1e1f26]">
+                  {availableUsers.map((u) => (
+                    <option key={u.id} value={u.id.toString()} className="bg-[#1e1f26]">
+                      {u.name} ({u.role})
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5">
+            <Filter size={18} className="text-muted" />
+            <select 
+              className="bg-white/5 border-white/10 rounded-lg outline-none py-2 px-3 text-white text-sm cursor-pointer hover:bg-white/10"
+              value={filterSource}
+              onChange={(e) => setFilterSource(e.target.value)}
+            >
+              <option value="Todos" className="bg-[#1e1f26]">Todas as Origens</option>
+              <option value="google" className="bg-[#1e1f26]">🌐 Google Maps</option>
+              <option value="linkedin" className="bg-[#1e1f26]">💼 LinkedIn</option>
+            </select>
+          </div>
 
           <select 
-            className="bg-white/5 border-white/10 rounded-lg outline-none py-2 px-4 text-white cursor-pointer hover:bg-white/10"
+            className="bg-white/5 border-white/10 rounded-lg outline-none py-2 px-3 text-white text-sm cursor-pointer hover:bg-white/10"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
           >
             {categories.map(cat => (
-              <option key={cat} value={cat}>{cat === "Todos" ? "Todas Tipologias" : cat}</option>
+              <option key={cat} value={cat} className="bg-[#1e1f26]">{cat === "Todos" ? "Todas Tipologias" : cat}</option>
             ))}
           </select>
         </div>
@@ -287,6 +346,14 @@ export default function LeadsPage() {
               </div>
 
               <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">{lead.name}</h3>
+              
+              {/* Identificação de quem capturou o Lead (visível apenas para Administradores) */}
+              {userRole === "ADMIN" && lead.userName && (
+                <div className="mb-3 flex items-center gap-1.5 text-xs text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md w-fit">
+                  <User size={12} />
+                  <span>Prospectado por: <strong>{lead.userName}</strong></span>
+                </div>
+              )}
               
               <div className="space-y-2 mb-6 text-sm text-muted">
                 <div className="flex items-center gap-2">

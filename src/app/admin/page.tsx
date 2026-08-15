@@ -1,11 +1,12 @@
 import { db } from "@/lib/db";
-import { users } from "@/lib/schema";
+import { users, leads } from "@/lib/schema";
 import { verifySession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { ShieldCheck, UserPlus, Users, Trash2 } from "lucide-react";
+import { ShieldCheck, UserPlus, Users, Trash2, Eye } from "lucide-react";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import Link from "next/link";
 
 // --- Server Actions internas para esta página ---
 async function updateUserPlan(formData: FormData) {
@@ -21,6 +22,7 @@ async function updateUserPlan(formData: FormData) {
   await db.update(users).set({ plan }).where(eq(users.id, id));
   revalidatePath("/admin");
 }
+
 async function addUser(formData: FormData) {
   "use server";
   const name = formData.get("name") as string;
@@ -64,7 +66,20 @@ export default async function AdminPage() {
     redirect("/");
   }
 
-  const allUsers = await db.select().from(users);
+  // Buscar todos os usuários com a contagem total de leads capturados
+  const allUsers = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      plan: users.plan,
+      createdAt: users.createdAt,
+      totalLeads: sql<number>`count(${leads.id})`.as("total_leads"),
+    })
+    .from(users)
+    .leftJoin(leads, eq(users.id, leads.userId))
+    .groupBy(users.id);
 
   return (
     <div className="container mx-auto px-4 max-w-5xl">
@@ -75,7 +90,7 @@ export default async function AdminPage() {
               <ShieldCheck className="text-amber-500" />
               Painel do Administrador
             </h1>
-            <p className="text-muted mt-2">Gerencie os acessos ao sistema FlowTech</p>
+            <p className="text-muted mt-2">Gerencie os acessos e audite as prospecções de cada usuário</p>
           </div>
         </div>
 
@@ -119,11 +134,17 @@ export default async function AdminPage() {
           </div>
 
           <div className="glass p-0 md:col-span-2 rounded-xl overflow-hidden border border-white/5">
-            <div className="p-6 border-b border-white/10">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Users className="text-primary" />
                 Usuários Cadastrados
               </h2>
+              <Link 
+                href="/leads?userId=all" 
+                className="text-xs flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-3 py-1.5 rounded-lg transition-colors font-semibold"
+              >
+                <Eye size={14} /> Ver Todos os Leads do Sistema
+              </Link>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-muted">
@@ -133,6 +154,7 @@ export default async function AdminPage() {
                     <th className="px-6 py-4 font-medium">Email</th>
                     <th className="px-6 py-4 font-medium">Permissão</th>
                     <th className="px-6 py-4 font-medium">Plano</th>
+                    <th className="px-6 py-4 font-medium text-center">Leads</th>
                     <th className="px-6 py-4 font-medium text-right">Ações</th>
                   </tr>
                 </thead>
@@ -163,24 +185,40 @@ export default async function AdminPage() {
                           </button>
                         </form>
                       </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="font-semibold text-white px-2 py-1 rounded bg-white/5 text-xs">
+                          {u.totalLeads || 0}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 text-right">
-                        {u.id !== session.userId && (
-                          <form action={deleteUser} className="inline">
-                            <input type="hidden" name="id" value={u.id} />
-                            <button type="submit" className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-400/10 transition-colors" title="Excluir usuário">
-                              <Trash2 size={16} />
-                            </button>
-                          </form>
-                        )}
-                        {u.id === session.userId && (
-                          <span className="text-xs text-muted block py-2 px-2">Usuário Atual</span>
-                        )}
+                        <div className="inline-flex items-center gap-2">
+                          <Link 
+                            href={`/leads?userId=${u.id}`}
+                            className="text-xs bg-primary/15 hover:bg-primary/30 text-primary border border-primary/30 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 font-medium"
+                            title={`Ver leads prospectados por ${u.name}`}
+                          >
+                            <Eye size={13} />
+                            Ver Leads
+                          </Link>
+
+                          {u.id !== session.userId && (
+                            <form action={deleteUser} className="inline">
+                              <input type="hidden" name="id" value={u.id} />
+                              <button type="submit" className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-400/10 transition-colors" title="Excluir usuário">
+                                <Trash2 size={16} />
+                              </button>
+                            </form>
+                          )}
+                          {u.id === session.userId && (
+                            <span className="text-xs text-muted block py-1 px-1">Você</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
                   {allUsers.length === 0 && (
                      <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-muted">Nenhum usuário encontrado.</td>
+                      <td colSpan={6} className="px-6 py-8 text-center text-muted">Nenhum usuário encontrado.</td>
                     </tr>
                   )}
                 </tbody>
