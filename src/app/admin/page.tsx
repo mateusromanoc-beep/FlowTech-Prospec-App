@@ -23,6 +23,23 @@ async function updateUserPlan(formData: FormData) {
   revalidatePath("/admin");
 }
 
+async function updateUserRole(formData: FormData) {
+  "use server";
+  const idValue = formData.get("id");
+  const role = formData.get("role") as "ADMIN" | "USER" | "USER_PRO";
+  if (!idValue || !role) return;
+  
+  const id = parseInt(idValue.toString(), 10);
+  const session = await verifySession();
+  if (session?.role !== "ADMIN") return;
+
+  // Proteção: não se remover de admin acidentalmente
+  if (id === session.userId && role !== "ADMIN") return;
+
+  await db.update(users).set({ role }).where(eq(users.id, id));
+  revalidatePath("/admin");
+}
+
 async function addUser(formData: FormData) {
   "use server";
   const name = formData.get("name") as string;
@@ -90,7 +107,7 @@ export default async function AdminPage() {
               <ShieldCheck className="text-amber-500" />
               Painel do Administrador
             </h1>
-            <p className="text-muted mt-2">Gerencie os acessos e audite as prospecções de cada usuário</p>
+            <p className="text-muted mt-2">Gerencie os acessos, permissões e audite as prospecções de cada usuário</p>
           </div>
         </div>
 
@@ -164,9 +181,30 @@ export default async function AdminPage() {
                       <td className="px-6 py-4 text-white font-medium">{u.name}</td>
                       <td className="px-6 py-4">{u.email}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs ${u.role === 'ADMIN' ? 'bg-amber-500/20 text-amber-500' : u.role === 'USER_PRO' ? 'bg-purple-500/20 text-purple-400' : 'bg-primary/20 text-primary'}`}>
-                          {u.role}
-                        </span>
+                        <form action={updateUserRole} className="inline-flex items-center gap-2">
+                          <input type="hidden" name="id" value={u.id} />
+                          <select 
+                            name="role" 
+                            defaultValue={u.role} 
+                            disabled={u.id === session.userId}
+                            className={`border border-white/10 rounded px-2 py-1 text-xs outline-none hover:bg-white/5 transition-colors cursor-pointer ${
+                              u.role === 'ADMIN' 
+                                ? 'bg-amber-500/20 text-amber-400 font-semibold' 
+                                : u.role === 'USER_PRO' 
+                                ? 'bg-purple-500/20 text-purple-300 font-semibold' 
+                                : 'bg-primary/20 text-primary font-semibold'
+                            } ${u.id === session.userId ? 'opacity-75 cursor-not-allowed' : ''}`}
+                          >
+                            <option value="USER" className="bg-[#1e1f26] text-white">USER</option>
+                            <option value="USER_PRO" className="bg-[#1e1f26] text-white">USER_PRO</option>
+                            <option value="ADMIN" className="bg-[#1e1f26] text-white">ADMIN</option>
+                          </select>
+                          {u.id !== session.userId && (
+                            <button type="submit" className="text-[10px] uppercase font-bold bg-white/5 hover:bg-white/10 text-white/70 px-2 py-1 rounded transition-colors border border-white/10">
+                              Salvar
+                            </button>
+                          )}
+                        </form>
                       </td>
                       <td className="px-6 py-4">
                         <form action={updateUserPlan} className="inline-flex items-center gap-2">
@@ -176,9 +214,9 @@ export default async function AdminPage() {
                             defaultValue={u.plan} 
                             className="bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white/80 outline-none hover:bg-white/5 transition-colors cursor-pointer"
                           >
-                            <option value="STARTER">Starter</option>
-                            <option value="GROWTH">Growth</option>
-                            <option value="UNLIMITED">Unlimited</option>
+                            <option value="STARTER" className="bg-[#1e1f26] text-white">Starter</option>
+                            <option value="GROWTH" className="bg-[#1e1f26] text-white">Growth</option>
+                            <option value="UNLIMITED" className="bg-[#1e1f26] text-white">Unlimited</option>
                           </select>
                           <button type="submit" className="text-[10px] uppercase font-bold bg-white/5 hover:bg-white/10 text-white/70 px-2 py-1 rounded transition-colors border border-white/10">
                             Salvar
