@@ -380,7 +380,7 @@ export default function LeadsPage() {
 
               {/* Botões de Ação */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {/* Linha 1: Ação Principal baseada na Origem */}
+                {/* Linha 1: Ação Principal (LinkedIn ou Ligar) + Link Externo */}
                 <div className="flex gap-2">
                   {lead.source === "linkedin" ? (
                     <a 
@@ -411,35 +411,24 @@ export default function LeadsPage() {
                   )}
                 </div>
 
-                {/* Linha 2: Abordagem e Contato Secundário */}
+                {/* Linha 2: WhatsApp + Abordagem IA (para ambos os tipos de lead) */}
                 <div className="flex gap-2">
-                  {lead.source === "linkedin" ? (
-                    <button
-                      onClick={() => handleGenerateMessage(lead)}
-                      className="flex-1 flex items-center justify-center gap-2 ai-btn"
-                      style={{ background: 'linear-gradient(135deg, #0077b5 0%, #8b5cf6 100%)', borderColor: '#8b5cf6' }}
-                    >
-                      <Bot size={16} /> Abordagem InMail/IA
-                    </button>
-                  ) : (
-                    <>
-                      <a
-                        href={lead.phone ? `https://wa.me/${formatPhoneForWhatsApp(lead.phone)}` : "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`whatsapp-btn ${!lead.phone ? 'opacity-40 pointer-events-none' : ''}`}
-                        style={!lead.phone ? { pointerEvents: 'none' } : {}}
-                      >
-                        <MessageCircle size={16} /> WhatsApp
-                      </a>
-                      <button
-                        onClick={() => handleGenerateMessage(lead)}
-                        className="ai-btn"
-                      >
-                        <Bot size={16} /> Abordagem IA
-                      </button>
-                    </>
-                  )}
+                  <a
+                    href={lead.phone ? `https://wa.me/${formatPhoneForWhatsApp(lead.phone)}` : "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`whatsapp-btn ${!lead.phone ? 'opacity-40 pointer-events-none' : ''}`}
+                    style={!lead.phone ? { pointerEvents: 'none' } : {}}
+                  >
+                    <MessageCircle size={16} /> WhatsApp
+                  </a>
+                  <button
+                    onClick={() => handleGenerateMessage(lead)}
+                    className="ai-btn"
+                    style={lead.source === "linkedin" ? { background: 'linear-gradient(135deg, #0077b5 0%, #8b5cf6 100%)', borderColor: '#8b5cf6' } : {}}
+                  >
+                    <Bot size={16} /> {lead.source === "linkedin" ? "Abordagem IA" : "Abordagem IA"}
+                  </button>
                 </div>
 
                 {/* Linha 3: Criador de Sites IA */}
