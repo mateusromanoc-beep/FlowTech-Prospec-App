@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Sparkles, Code, Play, Copy, CheckCircle, Download, Monitor, Smartphone, Send, Loader2, Lock, ExternalLink } from "lucide-react";
+import { 
+  ArrowLeft, Sparkles, Code, Play, Copy, CheckCircle, Download, 
+  Monitor, Smartphone, Send, Loader2, Lock, ExternalLink, RefreshCw, Palette 
+} from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -18,6 +21,8 @@ export default function SiteBuilderPage() {
   // Estados do Criador
   const [htmlCode, setHtmlCode] = useState("");
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
+  const [visualStyle, setVisualStyle] = useState("auto");
+  const [regenerating, setRegenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -30,6 +35,14 @@ export default function SiteBuilderPage() {
   const [generationStep, setGenerationStep] = useState("");
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const quickPrompts = [
+    "Mudar paleta para Dark Mode moderno",
+    "Aumentar o destaque do botão de WhatsApp",
+    "Adicionar seção com tabela de serviços",
+    "Destacar mais as avaliações do Google Maps",
+    "Adicionar seção de 'Como Funciona Nosso Atendimento'"
+  ];
 
   // 1. Carregar dados do Lead e verificar permissão
   useEffect(() => {
@@ -77,18 +90,18 @@ export default function SiteBuilderPage() {
   }, [leadId]);
 
   // 2. Lógica para gerar o site inicial
-  const generateInitialSite = async (id: number) => {
+  const generateInitialSite = async (id: number, styleToUse = visualStyle) => {
     try {
-      setGenerationStep("IA do FlowTech analisando os dados da empresa...");
-      await new Promise(r => setTimeout(r, 800));
-      setGenerationStep("Estruturando design responsivo e seções de conversão...");
-      await new Promise(r => setTimeout(r, 800));
-      setGenerationStep("Buscando imagens profissionais e gerando código-fonte...");
+      setGenerationStep("IA do Flow Prospect analisando a empresa e nicho...");
+      await new Promise(r => setTimeout(r, 600));
+      setGenerationStep("Estruturando design system com Tailwind CSS e alta conversão...");
+      await new Promise(r => setTimeout(r, 600));
+      setGenerationStep("Buscando imagens profissionais e gerando código final...");
 
       const res = await fetch("/api/ai/generate-site", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId: id }),
+        body: JSON.stringify({ leadId: id, visualStyle: styleToUse }),
       });
 
       if (!res.ok) {
@@ -103,6 +116,32 @@ export default function SiteBuilderPage() {
       console.error(err);
       setError(err.message || "Erro durante a geração com inteligência artificial.");
       setLoading(false);
+    }
+  };
+
+  // 2.1 Regenerar site do zero com novo estilo
+  const handleRegenerate = async (styleToUse = visualStyle) => {
+    if (!lead || regenerating) return;
+    setRegenerating(true);
+    try {
+      const res = await fetch("/api/ai/generate-site", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: lead.id, visualStyle: styleToUse }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Erro ao recriar site.");
+      }
+
+      const data = await res.json();
+      setHtmlCode(data.htmlCode);
+    } catch (err: any) {
+      console.error(err);
+      alert("Erro ao recriar site: " + err.message);
+    } finally {
+      setRegenerating(false);
     }
   };
 
@@ -155,13 +194,12 @@ export default function SiteBuilderPage() {
   };
 
   // 5. Lógica para refinar o site com novas instruções
-  const handleRefineSite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiPrompt.trim() || refining || !lead) return;
+  const handleRefineSite = async (customInstruction?: string) => {
+    const instruction = customInstruction || aiPrompt;
+    if (!instruction.trim() || refining || !lead) return;
 
     setRefining(true);
-    const userPrompt = aiPrompt;
-    setAiPrompt("");
+    if (!customInstruction) setAiPrompt("");
 
     try {
       const res = await fetch("/api/ai/generate-site", {
@@ -169,7 +207,7 @@ export default function SiteBuilderPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           leadId: lead.id,
-          customPrompt: userPrompt,
+          customPrompt: instruction,
           previousCode: htmlCode,
         }),
       });
@@ -306,60 +344,103 @@ export default function SiteBuilderPage() {
 
   return (
     <main className="builder-container">
-      {/* Header do Criador */}
-      <header className="builder-header glass">
-        <div className="flex items-center gap-4">
-          <Link href="/leads" className="p-2 hover:bg-white/10 rounded-full transition-colors text-white">
-            <ArrowLeft size={20} />
+      {/* Header do Criador - Toolbar 100% Horizontal sem Quebra */}
+      <header className="builder-header">
+        {/* Lado Esquerdo: Identificação do Lead */}
+        <div className="flex items-center gap-2.5 min-w-0 max-w-[240px] sm:max-w-[300px] md:max-w-[380px] shrink-0">
+          <Link 
+            href="/leads" 
+            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white shrink-0"
+            title="Voltar para a lista de Leads"
+          >
+            <ArrowLeft size={17} />
           </Link>
-          <div>
-            <h1 className="text-lg font-bold text-white leading-tight">{lead?.name}</h1>
-            <p className="text-[10px] text-muted">{lead?.type || "Nicho não informado"} • {lead?.city}</p>
+          <div className="min-w-0">
+            <h1 className="text-xs sm:text-sm font-bold text-white leading-tight truncate" title={lead?.name}>
+              {lead?.name}
+            </h1>
+            <p className="text-[10px] text-muted truncate">
+              {lead?.type || "Nicho não informado"} • {lead?.city}
+            </p>
           </div>
         </div>
 
-        {/* Botões de Ações Globais */}
-        <div className="flex items-center gap-3">
-          {/* Cópia do Link Público para Enviar ao Lead */}
-          <button 
-            onClick={handleCopyLink} 
-            className={`action-pill ${copiedLink ? 'success' : ''}`}
-            style={{ background: 'rgba(34, 211, 238, 0.1)', borderColor: 'rgba(34, 211, 238, 0.3)', color: 'var(--secondary)' }}
-            title="Copiar link real do site gerado para enviar ao cliente"
+        {/* Lado Direito: Toolbar 100% em Linha Única */}
+        <div className="toolbar-actions">
+          {/* Seletor de Estilo Visual */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Palette size={13} className="text-pink-400 shrink-0" />
+            <select
+              value={visualStyle}
+              onChange={(e) => setVisualStyle(e.target.value)}
+              disabled={regenerating}
+              className="style-select"
+              title="Escolha o estilo e clique em Recriar"
+            >
+              <option value="auto">🎯 Inteligente (Nicho)</option>
+              <option value="dark">⚫ Dark Mode & Tech</option>
+              <option value="luxury">👑 Luxo & Caponi</option>
+              <option value="clean">⚪ Clean & Saúde</option>
+              <option value="vibrant">🔥 Vibrante & Comercial</option>
+            </select>
+          </div>
+
+          {/* Botão Recriar com IA */}
+          <button
+            onClick={() => handleRegenerate(visualStyle)}
+            disabled={regenerating}
+            className="action-pill btn-recriar"
+            title="Gerar nova versão com IA usando fontes CoFo Sans, Sofia Pro e Caponi"
           >
-            {copiedLink ? <><CheckCircle size={14} /> Link Copiado!</> : <><ExternalLink size={14} /> Link para o Cliente</>}
+            {regenerating ? (
+              <><Loader2 size={12} className="animate-spin" /> Recriando...</>
+            ) : (
+              <><RefreshCw size={12} /> Recriar</>
+            )}
           </button>
 
-          {/* Salvamento Manual */}
+          {/* Botão Comercial: Link para o Lead */}
+          <button 
+            onClick={handleCopyLink} 
+            className={`action-pill btn-lead ${copiedLink ? 'success' : ''}`}
+            title="Copiar link da demonstração comercial com barra de apresentação"
+          >
+            {copiedLink ? <><CheckCircle size={12} /> Copiado!</> : <><ExternalLink size={12} /> Link do Lead</>}
+          </button>
+
+          {/* Separador sutil */}
+          <div className="h-4 w-[1px] bg-white/10 shrink-0 mx-0.5"></div>
+
+          {/* Botões de Ação do Código */}
           <button 
             onClick={handleSaveCode} 
             disabled={saving}
             className={`action-pill ${saved ? 'success' : ''}`}
-            style={saved ? { background: 'rgba(16, 185, 129, 0.15)', borderColor: '#10b981', color: '#34d399' } : {}}
             title="Salvar alterações manuais feitas no código"
           >
             {saving ? (
-              <><Loader2 size={14} className="animate-spin" /> Salvando...</>
+              <><Loader2 size={12} className="animate-spin" /> Salvando...</>
             ) : saved ? (
-              <><CheckCircle size={14} /> Salvo!</>
+              <><CheckCircle size={12} /> Salvo!</>
             ) : (
-              <><Play size={14} /> Salvar Alterações</>
+              <><Play size={12} /> Salvar</>
             )}
           </button>
 
           <button 
             onClick={handleCopyCode} 
             className={`action-pill ${copied ? 'success' : ''}`}
+            title="Copiar código-fonte HTML"
           >
-            {copied ? <><CheckCircle size={14} /> Copiado</> : <><Code size={14} /> Copiar Código</>}
+            {copied ? <><CheckCircle size={12} /> Copiado</> : <><Code size={12} /> Copiar</>}
           </button>
           
           <button 
             onClick={handleDownloadFile} 
             className={`action-pill ${downloaded ? 'success' : ''}`}
-            style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)', border: 'none', color: 'white' }}
+            title="Baixar arquivo HTML"
           >
-            {downloaded ? <><CheckCircle size={14} /> Pronto</> : <><Download size={14} /> Baixar HTML</>}
+            {downloaded ? <><CheckCircle size={12} /> Baixado</> : <><Download size={12} /> Baixar</>}
           </button>
         </div>
       </header>
@@ -387,11 +468,26 @@ export default function SiteBuilderPage() {
 
           {/* Input de Chat de Refinação por IA */}
           <div className="refine-panel glass">
+            {/* Sugestões de ajuste com 1 clique */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
+              <span className="text-[10px] text-white/50 uppercase font-bold shrink-0">Atalhos:</span>
+              {quickPrompts.map((q, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleRefineSite(q)}
+                  disabled={refining}
+                  className="text-[11px] bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 rounded-full px-2.5 py-0.5 whitespace-nowrap transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+
             <div className="flex items-center gap-2 mb-2 px-1">
               <Sparkles size={14} style={{ color: '#ec4899' }} />
               <span className="text-[11px] font-bold uppercase tracking-wider text-pink-400">Refinar site com Inteligência Artificial</span>
             </div>
-            <form onSubmit={handleRefineSite} className="flex gap-2 relative">
+            <form onSubmit={(e) => { e.preventDefault(); handleRefineSite(); }} className="flex gap-2 relative">
               <input
                 type="text"
                 value={aiPrompt}
@@ -470,37 +566,90 @@ export default function SiteBuilderPage() {
 
       <style jsx>{`
         .builder-container {
-          display: flex;
-          flex-direction: column;
-          height: 100vh;
-          overflow: hidden;
-          background: #070913;
+          margin: -2rem !important;
+          width: calc(100% + 4rem) !important;
+          height: 100vh !important;
+          display: flex !important;
+          flex-direction: column !important;
+          overflow: hidden !important;
+          background: #070913 !important;
         }
 
         .builder-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.75rem 1.5rem;
-          border-radius: 0;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-          z-index: 10;
-          height: 65px;
+          display: flex !important;
+          flex-direction: row !important;
+          justify-content: space-between !important;
+          align-items: center !important;
+          flex-wrap: nowrap !important;
+          padding: 0 1.25rem !important;
+          height: 56px !important;
+          min-height: 56px !important;
+          max-height: 56px !important;
+          border-radius: 0 !important;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+          z-index: 20 !important;
+          flex-shrink: 0 !important;
+          background: #0a0e1a !important;
+        }
+
+        .toolbar-actions {
+          display: flex !important;
+          flex-direction: row !important;
+          align-items: center !important;
+          flex-wrap: nowrap !important;
+          gap: 0.5rem !important;
+          flex-shrink: 0 !important;
+        }
+
+        .style-select {
+          background: rgba(255, 255, 255, 0.06) !important;
+          border: 1px solid rgba(255, 255, 255, 0.12) !important;
+          border-radius: 8px !important;
+          padding: 0.35rem 0.6rem !important;
+          color: #ffffff !important;
+          font-size: 0.75rem !important;
+          font-weight: 500 !important;
+          height: 32px !important;
+          outline: none !important;
+          cursor: pointer !important;
+          transition: border-color 0.2s ease !important;
+        }
+
+        .style-select:focus {
+          border-color: #8b5cf6 !important;
+        }
+
+        .btn-recriar {
+          background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%) !important;
+          border: none !important;
+          color: #ffffff !important;
+          font-weight: 700 !important;
+          box-shadow: 0 2px 10px rgba(236, 72, 153, 0.25) !important;
+        }
+
+        .btn-lead {
+          background: rgba(34, 211, 238, 0.1) !important;
+          border-color: rgba(34, 211, 238, 0.35) !important;
+          color: #38bdf8 !important;
+          font-weight: 600 !important;
         }
 
         .action-pill {
           background: rgba(255, 255, 255, 0.04);
           border: 1px solid rgba(255, 255, 255, 0.1);
-          padding: 0.4rem 1rem;
+          padding: 0.35rem 0.7rem;
           border-radius: 999px;
           color: rgba(255, 255, 255, 0.85);
-          font-size: 0.8rem;
+          font-size: 0.75rem;
           font-weight: 600;
+          height: 32px;
           cursor: pointer;
           transition: all 0.2s ease;
           display: inline-flex;
           align-items: center;
-          gap: 0.4rem;
+          gap: 0.35rem;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .action-pill:hover:not(:disabled) {
@@ -524,7 +673,7 @@ export default function SiteBuilderPage() {
           display: grid;
           grid-template-columns: 460px 1fr;
           flex: 1;
-          height: calc(100vh - 65px);
+          min-height: 0;
           overflow: hidden;
           background: #05060b;
         }
